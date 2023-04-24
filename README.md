@@ -16,7 +16,7 @@ chmod +x install.sh
 Note that you might need to change torch version in `install.sh` depending on your CUDA version.
 
 ## Datasets
-We release the following S2abel datasets on Zenodo: [ExtractedTables & Papers](), [CellTypeClassification](), [AttributedSourceMatching](), and [EntityLinking](), generated from source data under arXiv.org’s license. Access to the data is granted on request provided the user's intent is in accordance with license terms. Detailed data schema is [here](data_schema.md).
+We release the following S2abel datasets on Zenodo: [ExtractedTables & Papers](), [CellTypeClassification](), [AttributedSourceMatching](), and [EntityLinking](), generated from source data under arXiv.org’s license. Access to the data is granted on request provided the user's intent is in accordance with license terms. [Detailed data schema is here](data_schema.md).
 
 ## Training and Evaluation
 We offer notebooks for each of the sub-tasks mentioned in the paper, namely: [cell type classification](notebooks/ctc.ipynb), [attributed source mathing & candidate generation](notebooks/asm.ipynb), [entity disambiguation](notebooks/el.ipynb), which include training and evaluating corresponding models. Please make sure to modify the data_dir in the notebooks appropriately to the directory where the training data has been downloaded.
