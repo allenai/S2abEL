@@ -9,15 +9,12 @@ Each line represents the data for one paper, in json format.
     "arxiv_id": str,  # the arxiv id of a paper
     "topic": str,  # the topic fold this paper is about, e.g., question answering
     "tables": Dict[TableID, List[List[str]]],  # each table is a 2D array of raw cell content
-    "text": {
-        "title": str,  # title of a paper
-        "abstract": str,  # abstract of a paper
-        "fragments": List[str],  # raw text of the paper segmented into fragments
-    },
+    "title": str,  # title of a paper
+    "abstract": str,  # abstract of a paper
     "references": List[Reference],  # list of papers in the reference section
 }
 
-TableID = str
+TableID: str = arxiv_id + '/' + 'table_<table_idx>.csv' 
 Reference = {
     "idx": int,  # the 1-based index of this source as in the reference section, or 0 if this is the current paper
     'title': str,  # title of this source
@@ -40,7 +37,6 @@ This file contains the ground truth data for the cell type classification task, 
 RowPos = int  # row position of the cell in the table
 ColPos = int  # column position of the cell in the table
 ```
-
 
 
 # attributed_source.jsonl
