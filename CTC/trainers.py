@@ -79,7 +79,7 @@ def train_CTC_notebook(config):
     df = pd.read_pickle(config.input_file)
     g = set_seed(config.seed)
     input_num_cols = [] if not hasattr(config, 'input_num_cols') else config.input_num_cols
-    train_ds, valid_ds, _ = load_DataWithTOkenType(config, df, config.input_cols, input_num_cols, config.valid_fold, config.test_fold, config.augment)
+    train_ds, valid_ds, _ = load_DataWithTokenType(config, df, config.input_cols, input_num_cols, config.valid_fold, config.test_fold, config.augment)
     train_dl = DataLoader(train_ds, shuffle=True, batch_size=config.BS, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
     eval_dl = DataLoader(valid_ds, batch_size=config.eval_BS, collate_fn=padding_by_batch)
     CTC_train_loop_notebook(config, model, train_dl, eval_dl, config.name)
@@ -90,7 +90,7 @@ def train_CTC(g, args, config, eval_steps=150):
     model = SciBertWithAdditionalFeatures(config)
 
     df = pd.read_pickle(args.input_file)
-    train_ds, valid_ds, test_ds = load_DataWithTOkenType(config, df, config.input_cols, config.input_num_cols, args.valid_fold, args.test_fold, config.augment)
+    train_ds, valid_ds, test_ds = load_DataWithTokenType(config, df, config.input_cols, config.input_num_cols, args.valid_fold, args.test_fold, config.augment)
     train_dl = DataLoader(train_ds, shuffle=True, batch_size=config.BS, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
     eval_dl = DataLoader(valid_ds, batch_size=512, collate_fn=padding_by_batch)
 

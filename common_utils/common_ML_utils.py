@@ -6,6 +6,7 @@ from datasets import load_metric
 from collections import namedtuple
 from sklearn.metrics import pairwise_distances
 from typing import Dict, List, Tuple, Union, Optional
+from enum import Enum
 
 
 class Config(object):
@@ -46,8 +47,8 @@ def seed_worker(worker_id):
 add_token_mapping = {
     '[FIELD]': '[unused1]',
     '[REF]': '[unused2]',
-    '[BIB_REF]': '[unused3]',
-    '[OTHER_REF]': '[unused4]',
+    # '[BIB_REF]': '[unused3]',
+    # '[OTHER_REF]': '[unused4]',
     '[TABLE_TITLE]': '[unused5]',
     '[BIB_ITEM]': '[unused6]',
     '[SEC_OR_FIG_TITLE]': '[unused7]',
@@ -75,24 +76,6 @@ val_metrics = [
     Metric(name='f1', instance=load_metric('f1'), keywargs={'average': 'micro'}, prefix='val_micro_'),
     Metric(name='f1', instance=load_metric('f1'), keywargs={'average': None}, prefix='val_')
 ]
-
-
-def wandb_log(report, step_count):
-    import wandb
-
-    label_map_reverse = {
-        0: "Other",
-        1: "Dataset",
-        2: "Method",
-        3: "Metric",
-        4: "DatasetAndMetric"
-    }
-    for k, v in report.items():
-        if isinstance(v, np.ndarray):  # per-class report
-            for clas in range(len(v)):
-                wandb.log({f"val_f1_{label_map_reverse[clas]}": v[clas]}, step=step_count)
-        else:
-            wandb.log({k: v}, step=step_count)
 
 
 def sim_func(model, cell_embeds, ent_embeds):
@@ -129,3 +112,29 @@ def pooler(input, mtd, attn_mask: Optional[torch.LongTensor] = None):
         #     raise ValueError("Invalid source type")
     else:
         raise ValueError(f"{mtd}")
+
+
+class LabelsExt(Enum):
+    OTHER=0
+    DATASET=1
+    METHOD=2
+    METRIC=3
+    DATASET_AND_METRIC=4
+
+
+class Labels(Enum):
+    OTHER=0
+    DATASET=1
+    METHOD=2
+    METRIC=3
+
+
+m = {
+    'Method': "method",
+    'Dataset': "dataset",
+    'Metric': "metric",
+    'Other': "other",
+    'DatasetAndMetric': "dataset&metric"
+}
+
+m_reverse = {v:k for k, v in m.items()}

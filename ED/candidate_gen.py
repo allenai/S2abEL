@@ -25,14 +25,11 @@ def mix_candidate_set(EL_RPI: pd.DataFrame, EL_RPI_col:str, EL_direct_search: pd
 
     :return 
     """
-    # assert set(EL_RPI.ext_id.tolist()) == set(EL_direct_search.ext_id.tolist())
 
-    rst = EL_RPI.merge(EL_direct_search[ ['ext_id', EL_direct_search_col] ], on='ext_id', how='inner')
+    rst = EL_RPI.merge(EL_direct_search[ ['cell_id', EL_direct_search_col] ], on='cell_id', how='inner')
 
     # assert rst.fold.nunique() <= 2
     
-    # cols_to_keep = ['ext_id', 'fold', 'cell_content', 'cell_type', 'pwc_url', 'cell_reference', 'text_reference', 'bib_entries']
-
     def _get_mixed(row, top_k_each):
         # return list(set(row[f'{EL_RPI_col}{top_k_each}'] + row[EL_direct_search_col][:top_k_each]))
         # can1, can2 = row[f'{EL_RPI_col}{top_k_each}'], row[EL_direct_search_col][:top_k_each]
@@ -219,18 +216,23 @@ def get_ASR_candidates_encoders(EL: pd.DataFrame, ref_extract:pd.DataFrame, ASM_
     EL has columns: RPI_preds
     """
     EL = EL.copy()
+    EL['arxiv_id'] = EL['cell_id'].apply(lambda x: x.split('/')[0])
+    ref_extract_arxiv_id = ref_extract['ref_id'].apply(lambda x: x.split('/')[0]).unique()
     # somehow 5 rows are missing.
-    EL = EL[ (EL.ext_id!='1612.04211v1/table_02.csv/14/1') & (EL.ext_id!='1809.06309v2/table_03.csv/0/1') &
-        (EL.ext_id!='1809.06309v2/table_03.csv/0/2') & (EL.ext_id!='1904.03288v1/table_02.csv/11/1') & (EL.ext_id!='1507.06228v2/table_01.csv/2/0')]
+    EL = EL[ (EL.cell_id!='1612.04211v1/table_02.csv/14/1') & (EL.cell_id!='1809.06309v2/table_03.csv/0/1') &
+        (EL.cell_id!='1809.06309v2/table_03.csv/0/2') & (EL.cell_id!='1904.03288v1/table_02.csv/11/1') & (EL.cell_id!='1507.06228v2/table_01.csv/2/0')]
+    EL = EL[EL['arxiv_id'].isin(ref_extract_arxiv_id)]
     EL = EL.reset_index(drop=True)
 
     for top_n in tqdm(top_ns):
         for idx, col in enumerate(ASM_pred_cols):
             def _get_ent(row):
-                if row.cell_type == 'Method':
+                if row.cell_type.lower() == 'method':
                     attibute = 'related_methods'
-                elif row.cell_type == 'Dataset' or row.cell_type == 'DatasetAndMetric':
+                elif row.cell_type.lower() == 'dataset' or row.cell_type == 'dataset&metric':
                     attibute = 'related_datasets'
+                else:
+                    assert 0
                 RPI_preds = getattr(row, col)
                 if len(RPI_preds) == 1 and RPI_preds[0] == 0:
                     return []
@@ -348,10 +350,10 @@ def compute_bi_enc_ent_candidates(model, EL:pd.DataFrame, ent_embeds: Dict[str, 
     def _get_hits(row):
         cell_embed = np.asarray(row.cell_embeds).astype('float32')
         if not mix_methods_datasets:
-            if row.cell_type == 'Method':
-                hits = util.semantic_search(cell_embed, ent_embeds['Method'], top_k=top_k, score_function=lambda x, y: sim_func(model, x, y))[0]
+            if row.cell_type.lower() == 'method':
+                hits = util.semantic_search(cell_embed, ent_embeds['method'], top_k=top_k, score_function=lambda x, y: sim_func(model, x, y))[0]
             else:
-                hits = util.semantic_search(cell_embed, ent_embeds['Dataset'], top_k=top_k, score_function=lambda x, y: sim_func(model, x, y))[0]
+                hits = util.semantic_search(cell_embed, ent_embeds['dataset'], top_k=top_k, score_function=lambda x, y: sim_func(model, x, y))[0]
         else:
             raise NotImplementedError('mix_methods_datasets not implemented yet')
             # hits = util.semantic_search(cell_embed, ent_embeds['Method'] + ent_embeds['Dataset'], top_k=top_k, score_function=lambda x, y: sim_func(model, x, y))[0]
@@ -361,11 +363,11 @@ def compute_bi_enc_ent_candidates(model, EL:pd.DataFrame, ent_embeds: Dict[str, 
     pbar = tqdm(total=len(EL))
     EL['hits'] = EL.apply(_get_hits, axis=1)
     pbar.close()
-    EL = EL[['ext_id', 'fold', 'hits', 'cell_type', 'pwc_url', 'cell_content']]
+    EL = EL[['cell_id', 'fold', 'hits', 'cell_type', 'pwc_url', 'cell_content']]
 
     def _convert_to_ent_url(row):
         if not mix_methods_datasets:
-            ent_set = pwc_ents[pwc_ents.type == 'Method'] if row.cell_type == 'Method' else pwc_ents[pwc_ents.type == 'Dataset']
+            ent_set = pwc_ents[pwc_ents.type == 'method'] if row.cell_type == 'method' else pwc_ents[pwc_ents.type == 'dataset']
         else:
             ent_set = pwc_ents
         return [ent_set.iloc[h['corpus_id']]['url'] for h in row.hits]
@@ -394,7 +396,7 @@ def test_candidate_effectiveness(EL: pd.DataFrame, method_can_col: str, dataset_
             dataset_can = dataset_can[:top_n]
             method_can = method_can[:top_n]
 
-        if row.cell_type == 'Method':
+        if row.cell_type.lower() == 'method':
             valid_candidate_ent_count += len(method_can)
             if len(method_can) != 0 and row.pwc_url != '0':
                 total_non_emp_non_missing_count += 1

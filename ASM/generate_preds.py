@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, sys.path[0] + '/..')
 
 
-from CTC.TE_loaders import load_single_DataWithTOkenType
+from CTC.TE_loaders import load_single_DataWithTokenType
 from ED.data_loaders import load_bi_encoder_input, padding_bi_encoder_data
 from common_utils.common_data_processing_utils import *
 from common_utils.common_ML_utils import *
@@ -288,7 +288,7 @@ def generate_scores_encoder(RPI_ML: pd.DataFrame, model, output_path=None, BS=64
         RPI_ML = RPI_ML.reset_index(drop=True).copy()
 
     if isinstance(model, CrossEocoder):
-        ds = load_single_DataWithTOkenType(config, RPI_ML, drop_duplicates=False)
+        ds = load_single_DataWithTokenType(config, RPI_ML, drop_duplicates=False)
         dl = DataLoader(ds, batch_size=BS, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
     elif isinstance(model, BiEncoder):
         ds = load_bi_encoder_input(config, RPI_ML)
@@ -309,26 +309,23 @@ def enhance_preds_encoder(RPI_ML_scores: pd.DataFrame, output_path=None, enhance
     """
 
     records = []
-    for ext_id in tqdm(RPI_ML_scores.ext_id.unique()):
-        ext = RPI_ML_scores[RPI_ML_scores['ext_id'] == ext_id]
+    for cell_id in tqdm(RPI_ML_scores.cell_id.unique()):
+        ext = RPI_ML_scores[RPI_ML_scores['cell_id'] == cell_id]
         ext = ext.sort_values(by='ASM_scores', ascending=False, ignore_index=True, axis=0)
         RPI_preds = ext.apply(lambda row: int(row['idx']), axis=1).tolist()
         records.append({
-            'ext_id': ext_id,
+            'cell_id': cell_id,
             'ASM_preds': RPI_preds,
-            'paper_id': ext.iloc[0]['paper_id'],
+            'paper_id': cell_id.split('/')[0],
             'fold': ext.iloc[0]['fold'],
             'cell_type': ext.iloc[0]['cell_type'],
             'cell_content': ext.iloc[0]['cell_content'],
-            # 'cell_content_full': ext.iloc[0]['cell_content_full'],
-            'cell_reference': ext.iloc[0]['cell_reference'],
-            # 'text_reference': ext.iloc[0]['text_reference'],
-            'pwc_url': ext.iloc[0]['pwc_url'],
-            # 'bib_entries': ext.iloc[0]['bib_entries'],
+            'cell_reference': ext.iloc[0]['cell_reference']
+            # 'pwc_url': ext.iloc[0]['pwc_url']
         })
 
     RPI_ML_preds = pd.DataFrame(records)
-    assert len(RPI_ML_preds) == RPI_ML_scores.ext_id.nunique()
+    assert len(RPI_ML_preds) == RPI_ML_scores.cell_id.nunique()
 
     def _shortcut_preds(row, col_name):
         if row.cell_reference == '':

@@ -2,12 +2,9 @@ import torch
 from torch.utils.data import Dataset
 import pandas as pd
 from typing import Union, List
-from pathlib import Path
 import copy
-from tqdm import tqdm
 import random
 import datasets
-from transformers import DataCollatorWithPadding, AutoTokenizer, AutoModel
 
 
 from common_utils.common_data_processing_utils import *
@@ -18,6 +15,7 @@ def tokenize_flat_tables(config, flat_tables: pd.DataFrame, cols_to_tokenize: Li
     """
     pooling_mtd: pooler_output, last_hidden_state
     """
+    from transformers import  AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(config.pretrained)
     tokenizer.add_special_tokens(additional_special_tokens)
@@ -40,11 +38,12 @@ def tokenize_flat_tables(config, flat_tables: pd.DataFrame, cols_to_tokenize: Li
     return flat_tables
 
 
-def load_single_DataWithTOkenType(config, df, drop_duplicates):
-    return DataWithTOkenType(config, df, config.input_cols, config.input_num_cols, drop_duplicates=drop_duplicates)
+def load_single_DataWithTokenType(config, df, drop_duplicates):
+    input_num_cols = [] if not hasattr(config, 'input_num_cols') else config.input_num_cols
+    return DataWithTokenType(config, df, config.input_cols, input_num_cols, drop_duplicates=drop_duplicates)
 
 
-def load_DataWithTOkenType(config, df, input_cols, input_num_cols, valid_fold, test_fold, augment=False, load_train=True):
+def load_DataWithTokenType(config, df, input_cols, input_num_cols, valid_fold, test_fold, augment=False, load_train=True):
     is_test = df.fold == test_fold
     is_valid = df.fold == valid_fold
     test_df = df[is_test].copy()
@@ -64,9 +63,9 @@ def load_DataWithTOkenType(config, df, input_cols, input_num_cols, valid_fold, t
 
     # don't drop duplicates for validation and test folds.
     if load_train:
-        return DataWithTOkenType(config, train_df, input_cols, input_num_cols), DataWithTOkenType(config, valid_df, input_cols, input_num_cols, drop_duplicates=False), DataWithTOkenType(config, test_df, input_cols, input_num_cols, drop_duplicates=False)
+        return DataWithTokenType(config, train_df, input_cols, input_num_cols), DataWithTokenType(config, valid_df, input_cols, input_num_cols, drop_duplicates=False), DataWithTokenType(config, test_df, input_cols, input_num_cols, drop_duplicates=False)
     else:
-        return DataWithTOkenType(config, valid_df, input_cols, input_num_cols, drop_duplicates=False), DataWithTOkenType(config, test_df, input_cols, input_num_cols, drop_duplicates=False)
+        return DataWithTokenType(config, valid_df, input_cols, input_num_cols, drop_duplicates=False), DataWithTokenType(config, test_df, input_cols, input_num_cols, drop_duplicates=False)
 
 
 def split_and_pick(x, times):
@@ -85,13 +84,13 @@ def augment_data(df: pd.DataFrame, classes_to_aug: int, times):
     is_class = df.labels == classes_to_aug
     to_aug_df = df[is_class].copy()
     remaining_df = df[~is_class].copy()
-    to_aug_df['text_sentence_no_mask'] = to_aug_df['text_sentence_no_mask'].apply(lambda x: split_and_pick(x, times))
-    to_aug_df = to_aug_df.explode('text_sentence_no_mask', ignore_index=True)
+    to_aug_df['context_sentences'] = to_aug_df['context_sentences'].apply(lambda x: split_and_pick(x, times))
+    to_aug_df = to_aug_df.explode('context_sentences', ignore_index=True)
 
     return pd.concat([to_aug_df, remaining_df], ignore_index=True)
 
 
-class DataWithTOkenType(Dataset):
+class DataWithTokenType(Dataset):
     def __init__(self, config, input_df, input_cols: List[str], input_num_cols: List[str], drop_duplicates=None):
         super().__init__()
 
@@ -117,12 +116,6 @@ class DataWithTOkenType(Dataset):
 
         self.input_df = tokenize_flat_tables(config, self.input_df, input_cols).reset_index(drop=True)
 
-        # analyze how many are longer than 512
-        # count = 0
-        # for i in tqdm(range(len(self))):
-        #     if len(self.__getitem__(i)['input_ids']) >= 512:
-        #         count += 1
-        # print(f'Number of samples longer than 512: {count}, out of {len(self)}')
     
     def __len__(self):
         return len(self.input_df)

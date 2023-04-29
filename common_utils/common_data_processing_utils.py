@@ -1,3 +1,138 @@
+import re
+from unidecode import unidecode
+from common_utils.common_ML_utils import add_token_mapping, LabelsExt
+
+
+cell_rep_features = ['region_type', 'row_pos', 'reverse_row_pos', 
+                    'col_pos', 'reverse_col_pos', 'has_reference', 
+                    'cell_content', 'row_context', 'col_context', 
+                    'context_sentences']
+paper_rep_features = ['idx', 'year', 'author', 'title', 'abstract']
+
+
+
+
+def _get_table(x, paper_map):
+    paper_id, table_name = x['cell_id'].split('/')[0:2]
+    tables = paper_map[paper_id]['tables']
+    table = tables[ f'{paper_id}/{table_name}' ]
+    return table
+
+idx_re = re.compile(r'\d+')
+def get_reverse_row(x, paper_map):
+    table = _get_table(x, paper_map)
+    row = len(table)
+    return str(row - int(x['row_pos']) - 1)
+
+
+def get_reverse_col(x, paper_map):
+    table = _get_table(x, paper_map)
+    col = len(table[0])
+    return str(col - int(x['col_pos']) - 1)
+
+
+style_tags_re = re.compile(r"</?(bold|italic|red|green|blue)>")
+def remove_text_styles(s):
+    return style_tags_re.sub("", s)
+
+
+empty_paren_re = re.compile(r"\(\s*\)|\[\s*\]")
+reference_re = re.compile(r"<ref id='([^']*)'>(.*?)</ref>")
+def remove_references(s):
+    s = reference_re.sub("", s)
+    return empty_paren_re.sub("", s)
+
+
+def cleanup_str(string):
+    return remove_references(remove_text_styles(string)).replace("\xa0", " ")
+
+
+def get_cell_content(x, paper_map):
+    table = _get_table(x, paper_map)
+    return cleanup_str(table[int(x['row_pos'])][int(x['col_pos'])])
+
+
+ref_pattern = r'bibbib\d+'
+def get_refs(x, paper_map):
+    table = _get_table(x, paper_map)
+    raw_cell_content = table[int(x['row_pos'])][int(x['col_pos'])]
+    parts = reference_re.split(raw_cell_content)
+    refs = [r.replace('-', '') for r in parts[1::3]]
+    refs = [int(r[6:]) for r in refs if re.match(ref_pattern, r) is not None]
+    if len(refs) == 0:
+        return ''
+    else:
+        return refs[0]
+
+
+def get_has_reference(x, paper_map):
+    table = _get_table(x, paper_map)
+    return int('bib-bib' in table[int(x['row_pos'])][int(x['col_pos'])])
+
+
+def get_row_context(x, paper_map):
+    table = _get_table(x, paper_map)
+    row = table[int(x['row_pos'])]
+    row = [cleanup_str(i) for i in row]
+    row = [add_token_mapping['[EMPTY]'] if i == '' else i for i in row] 
+    return f" {add_token_mapping['[BORDER]']} ".join(row)
+
+
+def get_col_context(x, paper_map):
+    table = _get_table(x, paper_map)
+    col = [row[int(x['col_pos'])] for row in table]
+    col = [cleanup_str(i) for i in col]
+    col = [add_token_mapping['[EMPTY]'] if i == '' else i for i in col] 
+    return f" {add_token_mapping['[BORDER]']} ".join(col)
+
+
+def get_context_sentences(x, paper_map):
+    paper_id = x['cell_id'].split('/')[0]
+    context_sentences = [paper_map[paper_id]['raw_text'][s:e] for s, e in x['context_spans']]
+    context_sentences = " [SEP] ".join(context_sentences)
+    context_sentences = re.compile(r"(\</?b\>)").sub(r" \1 ", context_sentences)
+    context_sentences = re.compile(r"xxref-[\w\d-]*").sub(add_token_mapping['[REF]'], context_sentences)  # handles all in-text references i.e., \cite{}
+    context_sentences = re.compile(r"xxtable-xxanchor-([\w\d-])*").sub(add_token_mapping['[TABLE_TITLE]'], context_sentences)  # handles all table titles
+    context_sentences = re.compile(r"xxanchor-bibbib[\d-]*").sub(add_token_mapping['[BIB_ITEM]'], context_sentences)  # handles all bibitems
+    context_sentences = re.compile(r"xxanchor-[\w\d-]*").sub(add_token_mapping['[SEC_OR_FIG_TITLE]'], context_sentences)  # handles all bibitems
+    context_sentences = re.compile(r"\bdata set\b").sub(" dataset ", context_sentences)
+    return context_sentences
+
+
+labels_ext_map = {
+    'other': LabelsExt.OTHER.value,
+    'dataset': LabelsExt.DATASET.value,
+    'method': LabelsExt.METHOD.value,
+    'metric': LabelsExt.METRIC.value,
+    'dataset&metric': LabelsExt.DATASET_AND_METRIC.value,
+}
+
+
+def assemble_ctc_data(cell_types, papers):
+    ctc = cell_types.copy()
+    ctc['row_pos'] = ctc['cell_id'].apply(lambda x: x.split('/')[-2])
+    ctc['col_pos'] = ctc['cell_id'].apply(lambda x: x.split('/')[-1])
+    paper_map = {}
+    for _, row in papers.iterrows():
+        paper_map[row['arxiv_id']] = row
+    ctc['reverse_row_pos'] = ctc.apply(lambda x:  get_reverse_row(x, paper_map), axis=1)
+    ctc['reverse_col_pos'] = ctc.apply(lambda x:  get_reverse_col(x, paper_map), axis=1)
+    ctc['fold'] = ctc['cell_id'].apply(lambda x: paper_map[x.split('/')[0]]['topic'])
+    ctc['cell_content'] = ctc.apply(lambda x: get_cell_content(x, paper_map), axis=1)
+    ctc['has_reference'] = ctc.apply(lambda x: get_has_reference(x, paper_map), axis=1)
+    ctc['row_context'] = ctc.apply(lambda x: get_row_context(x, paper_map), axis=1)
+    ctc['col_context'] = ctc.apply(lambda x: get_col_context(x, paper_map), axis=1)
+    ctc['cell_reference'] = ctc.apply(lambda x: get_refs(x, paper_map), axis=1)
+    ctc['context_sentences'] = ctc.apply(lambda x: get_context_sentences(x, paper_map), axis=1)
+    del ctc['context_spans']
+
+    ctc['labels'] = ctc['cell_type'].apply(lambda x: labels_ext_map[x])
+    # print(paper_map['1606.02270v2']['tables']['1606.02270v2/table_02.csv'][0])
+
+    return ctc
+
+
+
 
 
 def get_above_threshold(row, to_cols, sim_cols, mode, threshold=None):

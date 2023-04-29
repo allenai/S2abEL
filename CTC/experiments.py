@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from common_utils.common_data_processing_utils import padding_by_batch
 from common_utils.common_exp_utils import Experiment
-from CTC.TE_loaders import DataWithTOkenType, load_single_DataWithTOkenType
+from CTC.TE_loaders import DataWithTokenType, load_single_DataWithTokenType
 from CTC.utils import generate_CTC_preds
 from CTC.models import SciBertWithAdditionalFeatures
 
@@ -163,8 +163,8 @@ class AxCellEvalExp(AxCellExp):
 
 class CTCEvalExp(Experiment):
     model: SciBertWithAdditionalFeatures
-    valid_ds: DataWithTOkenType
-    test_ds: DataWithTOkenType
+    valid_ds: DataWithTokenType
+    test_ds: DataWithTokenType
 
     def __init__(self, seed, test_fold, input_file_path=None, input_df=None, valid_fold='img_class', model_path=None):
         super().__init__(seed, test_fold, input_file_path, input_df, valid_fold, model_path)
@@ -179,7 +179,7 @@ class CTCEvalExp(Experiment):
         if input_df is None:
             input_df = pd.read_pickle(input_file_path)
         
-        # self.valid_ds, self.test_ds = load_DataWithTOkenType(config, input_df, config.input_cols, config.input_num_cols, valid_fold, test_fold, augment=False, load_train=False)
+        # self.valid_ds, self.test_ds = load_DataWithTokenType(config, input_df, config.input_cols, config.input_num_cols, valid_fold, test_fold, augment=False, load_train=False)
         self.model = model
         self.config = config
         self.input_df = input_df
@@ -197,7 +197,7 @@ class CTCEvalExp(Experiment):
             df = self.input_df[self.input_df.fold == self.config.test_fold].reset_index(drop=True)
         else:
             raise ValueError(f"split must be either 'valid' or 'test', got {split}")
-        ds = load_single_DataWithTOkenType(self.config, df, drop_duplicates=False)
+        ds = load_single_DataWithTokenType(self.config, df, drop_duplicates=False)
         dl = DataLoader(ds, batch_size=BS, collate_fn=padding_by_batch)
     
         for batch in tqdm(dl):

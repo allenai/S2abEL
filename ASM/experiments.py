@@ -75,8 +75,10 @@ class DirectRetrievalTripletTrain:
                  save_dir=None, lr=2e-5, epoch=2, eval_steps=300, grad_accum_step=2, eval_BS=64,
                  name=None):
 
+        cell_feas = cell_rep_features.copy()
+        cell_feas.remove('has_reference')
         cell_embedding = Config(
-            input_cols=['region_type', 'row_id', 'reverse_row_id', 'col_id', 'reverse_col_id', 'cell_content', 'row_context', 'col_context', 'text_sentence_no_mask'],
+            input_cols=cell_feas,
             pool_mtd='avg',
             pretrained = "allenai/scibert_scivocab_uncased",
             lr=lr

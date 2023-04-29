@@ -11,7 +11,7 @@ from ED.models import *
 from common_utils.common_ML_utils import *
 from common_utils.common_data_processing_utils import *
 from ED.data_loaders import load_bi_encoder_input, padding_bi_encoder_data, load_triplet_encoder_input
-from CTC.TE_loaders import load_DataWithTOkenType
+from CTC.TE_loaders import load_DataWithTokenType
 
 def train_cross_encoder_notebook(config):
     model = CrossEocoder(config)
@@ -23,7 +23,7 @@ def train_cross_encoder_notebook(config):
         print(len(df))
     g = set_seed(config.seed)
     input_num_cols = [] if not hasattr(config, 'input_num_cols') else config.input_num_cols
-    train_ds, valid_ds, _ = load_DataWithTOkenType(config, df, config.input_cols, input_num_cols, config.valid_fold, config.test_fold, augment=False)
+    train_ds, valid_ds, _ = load_DataWithTokenType(config, df, config.input_cols, input_num_cols, config.valid_fold, config.test_fold, augment=False)
     train_dl = DataLoader(train_ds, shuffle=True, batch_size=config.BS, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
     eval_dl = DataLoader(valid_ds, batch_size=config.eval_BS, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
     EL_train_loop_notebook(config, model, train_dl, eval_dl)
@@ -45,7 +45,7 @@ def cross_encoder(g, args, config, eval_steps=150):
         print(len(df))
     
     # if args.val_test_fold_file is None:
-    train_ds, valid_ds, _ = load_DataWithTOkenType(config, df, config.input_cols, config.input_num_cols, 'img_class', args.test_fold, augment=False)
+    train_ds, valid_ds, _ = load_DataWithTokenType(config, df, config.input_cols, config.input_num_cols, 'img_class', args.test_fold, augment=False)
     train_dl = DataLoader(train_ds, shuffle=True, batch_size=args.BS, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
     eval_dl = DataLoader(valid_ds, batch_size=256, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
     # else:
@@ -53,8 +53,8 @@ def cross_encoder(g, args, config, eval_steps=150):
     #         split = json.load(f)
     #     train_df = df[df.fold != args.test_fold].copy()
     #     valid_df = df[(df.fold == args.test_fold) & (df.paper_id.isin(split['val'][args.test_fold]))].copy()
-    #     train_ds = load_single_DataWithTOkenType(config, train_df, drop_duplicates=True)
-    #     valid_ds = load_single_DataWithTOkenType(config, valid_df, drop_duplicates=False)
+    #     train_ds = load_single_DataWithTokenType(config, train_df, drop_duplicates=True)
+    #     valid_ds = load_single_DataWithTokenType(config, valid_df, drop_duplicates=False)
     #     train_dl = DataLoader(train_ds, shuffle=True, batch_size=config.BS, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
     #     eval_dl = DataLoader(valid_ds, batch_size=256, collate_fn=padding_by_batch, worker_init_fn=seed_worker, generator=g)
 

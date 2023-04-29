@@ -1,6 +1,6 @@
 # S2abEL: A Dataset and Baseline for Entity Linking from Scientific Tables with Out-of-Knowledge-Base Mentions
 
-This repository provides access to the dataset [S2abEL](https:google.com) and is the official implementation of [S2abEL: A Dataset and Baseline for Entity Linking from Scientific Tables with Out-of-Knowledge-Base Mentions](https:google.com) by Yuze Lou, Bailey Kuehl, Erin Bransom, Aakanksha Naik, Sergey Feldman, and Doug Downey.
+This repository provides access to the dataset S2abEL (can be downloaded here: https://github.com/allenai/S2abEL/blob/main/data/release_data.tar.gz) and is the official implementation of [S2abEL: A Dataset and Baseline for Entity Linking from Scientific Tables with Out-of-Knowledge-Base Mentions](https:google.com) by Yuze Lou, Bailey Kuehl, Erin Bransom, Aakanksha Naik, Sergey Feldman, and Doug Downey.
 
 ## Installation
 To create a [conda](https://www.anaconda.com/distribution/) environment named `s2abel` and install requirements run:

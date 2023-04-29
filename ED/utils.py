@@ -1,19 +1,15 @@
 from tqdm import tqdm
-from pathlib import Path
 import pandas as pd
 from torch.utils.data import DataLoader
 from typing import Dict, Tuple, List
-from sentence_transformers import util
 import pickle
 import re
 import json
 
-from CTC.utils import LabelsExt
-from ED.models import *
 from common_utils.common_ML_utils import *
 from common_utils.common_data_processing_utils import *
 from ED.data_loaders import load_bi_encoder_input, padding_bi_encoder_data, load_triplet_encoder_input
-from CTC.TE_loaders import load_DataWithTOkenType, load_single_DataWithTOkenType
+from CTC.TE_loaders import load_single_DataWithTokenType
 
 
 def convert_EL_can_to_TURL_data(EL_bm25f_can, EL_pred_can, pc, ent_map, ref_extract, test_fold, train_output_path=None, val_output_path=None, test_output_path=None, top_n_cans=50, val_fold='img_class'):
@@ -161,9 +157,9 @@ def replace_EL_non_train_folds(EL_cans_non_learned: pd.DataFrame, EL_cans_learne
     assert EL_cans_learned.fold.nunique() <= 2
 
     if not drop_train_folds:
-        output = EL_cans_non_learned.merge(EL_cans_learned, on='ext_id', how='left', suffixes=(None, '_to_drop'))
+        output = EL_cans_non_learned.merge(EL_cans_learned, on='cell_id', how='left', suffixes=(None, '_to_drop'))
     else:
-        output = EL_cans_non_learned.merge(EL_cans_learned, on='ext_id', how='inner', suffixes=(None, '_to_drop'))
+        output = EL_cans_non_learned.merge(EL_cans_learned, on='cell_id', how='inner', suffixes=(None, '_to_drop'))
 
     can_cols = [i for i in EL_cans_non_learned.columns if i.startswith('candidates_')]
 
@@ -187,8 +183,8 @@ def replace_EL_non_train_folds(EL_cans_non_learned: pd.DataFrame, EL_cans_learne
 
 
 def convert_EL_cans_to_triplet_training_data(EL: pd.DataFrame, ent_map: Dict[str, Tuple], method_can_col:str='method_RPI_candidates', dataset_can_col:str='dataset_RPI_candidates', val_test_split=None, top_n=10000):
-    attrs = ['ext_id', 'paper_id', 'fold', 'cell_type', 'cell_content', 'row_context',
-       'col_context', 'row_id', 'col_id', 'reverse_row_id', 'reverse_col_id', 'region_type', 'pwc_url', 'text_sentence_no_mask']
+    attrs = ['cell_id', 'fold', 'cell_type', 'cell_content', 'row_context',
+       'col_context', 'row_pos', 'col_pos', 'reverse_row_pos', 'reverse_col_pos', 'region_type', 'pwc_url', 'context_sentences']
     output = EL[ attrs ]
     output = output[output.pwc_url != '0'].copy()
 
@@ -197,7 +193,7 @@ def convert_EL_cans_to_triplet_training_data(EL: pd.DataFrame, ent_map: Dict[str
     for row in EL.itertuples():
         if row.pwc_url == '0':
             continue
-        if row.cell_type == 'Method':
+        if row.cell_type.lower() == 'method':
             tmp = set([ent_map[m_url] for m_url in getattr(row, method_can_col)[:top_n] if m_url != row.pwc_url])
         else:
             tmp = set([ent_map[d_url] for d_url in getattr(row, dataset_can_col)[:top_n] if d_url != row.pwc_url])
@@ -244,15 +240,12 @@ def convert_EL_cans_to_ML_data(EL_RPI: pd.DataFrame, ent_map: Dict[str, Tuple], 
     """
     :return EL_ML
     """
-    # attrs = ['ext_id', 'fold', 'cell_type', 'cell_content', 'row_context',
-    #    'col_context', 'row_id', 'col_id', 'reverse_row_id', 'reverse_col_id', 'region_type', 'pwc_url', 'text_sentence_no_mask']
-    # output = EL_RPI.copy()[ attrs ]
 
     output = EL_RPI.copy()
     candidate_ents = []
 
     for row in EL_RPI.itertuples():
-        if (hasattr(row, 'cell_type') and row.cell_type == 'Method') or (hasattr(row, 'labels') and row.labels == LabelsExt.METHOD.value):
+        if (hasattr(row, 'cell_type') and row.cell_type.lower() == 'method') or (hasattr(row, 'labels') and row.labels == LabelsExt.METHOD.value):
             tmp = set([ent_map[m_url] for m_url in getattr(row, method_can_col)[:top_n]])
         else:
             tmp = set([ent_map[d_url] for d_url in getattr(row, dataset_can_col)[:top_n]])
@@ -339,7 +332,7 @@ def compute_ent_embedding(model, PwC_ent:pd.DataFrame, output_path=None, BS=64, 
     )
 
     output = {}
-    for t in ('Method', 'Dataset'):
+    for t in ('method', 'dataset'):
         if mode == 'Contrastive':
             ds = load_bi_encoder_input(config, PwC_ent[PwC_ent.type == t].reset_index(drop=True))
         elif mode == 'Triplet':
@@ -385,7 +378,7 @@ def gen_test_EL_on_GT_CTC(EL_data, model, folds:List[str], top_n=10, BS=512, mod
             ds = load_bi_encoder_input(config, data)
             dl = DataLoader(ds, batch_size=BS, collate_fn=padding_bi_encoder_data)
         elif mode == 'cross':
-            ds = load_single_DataWithTOkenType(config, data, drop_duplicates=False)
+            ds = load_single_DataWithTokenType(config, data, drop_duplicates=False)
             dl = DataLoader(ds, batch_size=BS, collate_fn=padding_by_batch)
         else:
             raise ValueError(f"mode = {mode} is not supported.")
@@ -394,13 +387,13 @@ def gen_test_EL_on_GT_CTC(EL_data, model, folds:List[str], top_n=10, BS=512, mod
         data['relevance_score'] = relevance_score
 
         records = []
-        for ext_id in tqdm(data.ext_id.unique()):
-            ext = data[data.ext_id == ext_id]
+        for cell_id in tqdm(data.cell_id.unique()):
+            ext = data[data.cell_id == cell_id]
             ext = ext.sort_values(by='relevance_score', ascending=False, ignore_index=True, axis=0)
             
             exts = ext.iloc[:top_n]
             records.append({
-                'ext_id': ext_id,
+                'cell_id': cell_id,
                 'fold': ext.iloc[0]['fold'],
                 'cell_type': ext.iloc[0]['cell_type'],
                 'cell_content': ext.iloc[0]['cell_content'],
@@ -419,7 +412,7 @@ PRED_FAIL = 1001  # returning a non-match entity
 def _get_rank(row, threshold):
     if row.relevance_scores[0] < threshold:
         return PRED_MISSING  # if rank is PRED_MISSING, it means return 'missing from KB'
-    for idx, (relevance_score, can_ent_url) in enumerate(zip(row.relevance_scores, row.returned_urls)):
+    for idx, (_, can_ent_url) in enumerate(zip(row.relevance_scores, row.returned_urls)):
         # if relevance_score < threshold:
         #     break  
         if can_ent_url == row.pwc_url:
@@ -473,14 +466,17 @@ def compute_EL_perf_e2e(CTC_with_preds: pd.DataFrame, EL_preds_on_GT_CTC: pd.Dat
 
     assert EL_preds_on_GT_CTC.fold.nunique() <= 2
 
-    if threshold > 0:
+    if threshold >= 0:
         threshold = threshold - 1
 
-    EL = EL_preds_on_GT_CTC.merge(CTC_with_preds[['ext_id', 'CTC_preds']], on='ext_id', how='inner')
+    EL = EL_preds_on_GT_CTC.merge(CTC_with_preds[['cell_id', 'CTC_preds']], on='cell_id', how='inner')
     EL['rank'] = EL.apply(lambda row: _get_rank(row, threshold), axis=1)
+    # return EL
     CTC = EL
+
+    CTC['cell_type'] = CTC['cell_type'].apply(lambda x: m_reverse[x])
     
-    correct_M_idx = (CTC.CTC_preds == CTC.cell_type) & (CTC.cell_type == 'Method')
+    correct_M_idx = (CTC.CTC_preds == CTC.cell_type) & (CTC.cell_type== 'Method')
     correct_D_idx = ((CTC.CTC_preds == 'Dataset') | (CTC.CTC_preds == 'DatasetAndMetric')) & ((CTC.cell_type == 'Dataset') | (CTC.cell_type == 'DatasetAndMetric'))
     correct_for_EL_idx = correct_M_idx | correct_D_idx
     correct_pos_idx = (CTC.cell_type != 'Other') & (CTC.CTC_preds != 'Other')
@@ -490,10 +486,10 @@ def compute_EL_perf_e2e(CTC_with_preds: pd.DataFrame, EL_preds_on_GT_CTC: pd.Dat
     for fold in EL.fold.unique():
         fold_GT_inKB, fold_GT_outKB = EL[(EL.pwc_url != '0') & (EL.fold == fold)], EL[(EL.pwc_url == '0') & (EL.fold == fold)]
 
-        outKB_TP_gt_ctc = (EL.fold == fold) & (EL.pwc_url == '0') & (EL['rank'] == PRED_MISSING)
-        outKB_prec_gt_ctc = sum(outKB_TP_gt_ctc) / sum((EL.fold == fold) & (EL['rank'] == PRED_MISSING)) if sum((EL.fold == fold) & (EL['rank'] == PRED_MISSING)) != 0 else None
-        outKB_recall_gt_ctc = sum(outKB_TP_gt_ctc) / sum((EL.pwc_url == '0') & (EL.fold == fold)) if sum((EL.pwc_url == '0') & (EL.fold == fold)) != 0 else None
-        outKB_f1_gt_ctc = 2 * outKB_prec_gt_ctc * outKB_recall_gt_ctc / (outKB_prec_gt_ctc + outKB_recall_gt_ctc) if outKB_prec_gt_ctc is not None and outKB_recall_gt_ctc is not None else None
+        # outKB_TP_gt_ctc = (EL.fold == fold) & (EL.pwc_url == '0') & (EL['rank'] == PRED_MISSING)
+        # outKB_prec_gt_ctc = sum(outKB_TP_gt_ctc) / sum((EL.fold == fold) & (EL['rank'] == PRED_MISSING)) if sum((EL.fold == fold) & (EL['rank'] == PRED_MISSING)) != 0 else None
+        # outKB_recall_gt_ctc = sum(outKB_TP_gt_ctc) / sum((EL.pwc_url == '0') & (EL.fold == fold)) if sum((EL.pwc_url == '0') & (EL.fold == fold)) != 0 else None
+        # outKB_f1_gt_ctc = 2 * outKB_prec_gt_ctc * outKB_recall_gt_ctc / (outKB_prec_gt_ctc + outKB_recall_gt_ctc) if outKB_prec_gt_ctc is not None and outKB_recall_gt_ctc is not None else None
 
         outKB_TP_e2e = (EL.fold == fold) & (EL.pwc_url == '0') & (EL['rank'] == PRED_MISSING) & correct_pos_idx
         outKB_prec_e2e = sum(outKB_TP_e2e) / sum((EL.fold == fold) & (EL['rank'] == PRED_MISSING)) if sum((EL.fold == fold) & (EL['rank'] == PRED_MISSING)) != 0 else None
@@ -525,15 +521,15 @@ def compute_EL_perf_e2e(CTC_with_preds: pd.DataFrame, EL_preds_on_GT_CTC: pd.Dat
 
 
 def compute_micro_EL_perf_e2e(CTC_with_preds: pd.DataFrame, EL_preds_on_GT_CTC: pd.DataFrame, threshold, acc_at_topks: List[int]):
-    EL = EL_preds_on_GT_CTC.merge(CTC_with_preds[['ext_id', 'CTC_preds']], on='ext_id', how='inner')
+    EL = EL_preds_on_GT_CTC.merge(CTC_with_preds[['cell_id', 'CTC_preds']], on='cell_id', how='inner')
     EL['rank'] = EL.apply(lambda row: _get_rank(row, threshold), axis=1)
     CTC = EL
-    
+    CTC['cell_type'] = CTC['cell_type'].apply(lambda x: m_reverse[x])
     # TN_idx = ((CTC.CTC_preds == "Other") | (CTC.CTC_preds == 'Metric')) & ((CTC.cell_type == "Other") | (CTC.cell_type == "Metric"))
     correct_M_idx = (CTC.CTC_preds == CTC.cell_type) & (CTC.cell_type == 'Method')
     correct_D_idx = ((CTC.CTC_preds == 'Dataset') | (CTC.CTC_preds == 'DatasetAndMetric')) & ((CTC.cell_type == 'Dataset') | (CTC.cell_type == 'DatasetAndMetric'))
     correct_for_EL_idx = correct_M_idx | correct_D_idx
-    correct_pos_idx = (CTC.cell_type != 'Other') & (CTC.CTC_preds != 'Other')
+    correct_pos_idx = (CTC.cell_type != 'other') & (CTC.CTC_preds != 'other')
 
     GT_inKB, GT_outKB = EL[EL.pwc_url != '0'], EL[EL.pwc_url == '0']
     outKB_TP = (EL.pwc_url == '0') & (EL['rank'] == PRED_MISSING)
@@ -565,14 +561,14 @@ def compute_micro_EL_perf_e2e(CTC_with_preds: pd.DataFrame, EL_preds_on_GT_CTC: 
 
 def get_false_predictions(CTC_with_preds, EL_preds_on_GT_CTC: pd.DataFrame, cans: pd.DataFrame, top_n_to_rank, threshold):
     
-    EL = EL_preds_on_GT_CTC.merge(CTC_with_preds[['ext_id', 'CTC_preds']], on='ext_id', how='inner').copy()
+    EL = EL_preds_on_GT_CTC.merge(CTC_with_preds[['cell_id', 'CTC_preds']], on='cell_id', how='inner').copy()
     EL['rank'] = EL.apply(lambda row: _get_rank(row, threshold), axis=1)
     CTC = EL
-
+    CTC['cell_type'] = CTC['cell_type'].apply(lambda x: m_reverse[x])
     correct_M_idx = (CTC.CTC_preds == CTC.cell_type) & (CTC.cell_type == 'Method')
     correct_D_idx = ((CTC.CTC_preds == 'Dataset') | (CTC.CTC_preds == 'DatasetAndMetric')) & ((CTC.cell_type == 'Dataset') | (CTC.cell_type == 'DatasetAndMetric'))
     correct_for_EL_idx = correct_M_idx | correct_D_idx
-    correct_pos_idx = (CTC.cell_type != 'Other') & (CTC.CTC_preds != 'Other')
+    correct_pos_idx = (CTC.cell_type != 'other') & (CTC.CTC_preds != 'other')
 
     outKB_TP_gt_ctc = (EL.pwc_url == '0') & (EL['rank'] == PRED_MISSING)
     inKB_TP_gt_ctc = (EL.pwc_url != '0') & (EL['rank']==1)
@@ -589,4 +585,4 @@ def get_false_predictions(CTC_with_preds, EL_preds_on_GT_CTC: pd.DataFrame, cans
         return row.pwc_url in row['candidates_100'][:top_n_to_rank]
     cans['GT_in_can'] = cans.apply(_GT_in_can, axis=1)
     
-    return EL.merge(cans[['ext_id', 'GT_in_can']], on='ext_id', how='inner')
+    return EL.merge(cans[['cell_id', 'GT_in_can']], on='cell_id', how='inner')
