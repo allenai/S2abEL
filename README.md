@@ -21,8 +21,6 @@ We release the following S2abel datasets on Zenodo: [ExtractedTables & Papers]()
 ## Training and Evaluation
 We offer notebooks for each of the sub-tasks mentioned in the paper, namely: [cell type classification](notebooks/ctc.ipynb), [attributed source mathing & candidate generation](notebooks/asm.ipynb), [entity disambiguation](notebooks/el.ipynb), which include training and evaluating corresponding models. Please make sure to modify the data_dir in the notebooks appropriately to the directory where the training data has been downloaded.
 
-## Reproducibility
-The experiments in the paper were run with the python (3.9.5) package versions in `install.sh`. Rerunning provided notebooks should produce the same numbers as in the paper.
 
 ## License
 S2abEL is released under the [Apache 2.0 license](LICENSE).
