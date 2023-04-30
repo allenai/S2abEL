@@ -16,7 +16,9 @@ chmod +x install.sh
 Note that you might need to change torch version in `install.sh` depending on your CUDA version.
 
 ## Datasets
-We release the following S2abel datasets: `ExtractedTables & Papers`, `CellTypeClassification`, `AttributedSourceMatching`, and `EntityLinking` here: https://github.com/allenai/S2abEL/blob/main/data/release_data.tar.gz. [Detailed data schema is here](data_schema.md).
+We release the following S2abel datasets: `ExtractedTables & Papers`, `CellTypeClassification`, `AttributedSourceMatching`, and `EntityLinking` here: https://github.com/allenai/S2abEL/blob/main/data/release_data.tar.gz. 
+
+[Detailed data schema is here](data_schema.md).
 
 ## Training and Evaluation
 We offer notebooks for training and evaluating each of the sub-tasks mentioned in the paper, namely: [cell type classification](notebooks/ctc.ipynb), [attributed source mathing & candidate generation](notebooks/asm.ipynb), and [entity disambiguation](notebooks/el.ipynb).
