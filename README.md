@@ -1,6 +1,6 @@
 # S2abEL: A Dataset and Baseline for Entity Linking from Scientific Tables with Out-of-Knowledge-Base Mentions
 
-This repository provides access to the dataset S2abEL (can be downloaded here: https://github.com/allenai/S2abEL/blob/main/data/release_data.tar.gz) and is the official implementation of [S2abEL: A Dataset and Baseline for Entity Linking from Scientific Tables with Out-of-Knowledge-Base Mentions](https:google.com) by Yuze Lou, Bailey Kuehl, Erin Bransom, Aakanksha Naik, Sergey Feldman, and Doug Downey.
+This repository provides access to the dataset `S2abEL` and is the official implementation of [S2abEL: A Dataset and Baseline for Entity Linking from Scientific Tables with Out-of-Knowledge-Base Mentions]() by Yuze Lou, Bailey Kuehl, Erin Bransom, Aakanksha Naik, Sergey Feldman, and Doug Downey.
 
 ## Installation
 To create a [conda](https://www.anaconda.com/distribution/) environment named `s2abel` and install requirements run:
@@ -16,10 +16,10 @@ chmod +x install.sh
 Note that you might need to change torch version in `install.sh` depending on your CUDA version.
 
 ## Datasets
-We release the following S2abel datasets on Zenodo: [ExtractedTables & Papers](), [CellTypeClassification](), [AttributedSourceMatching](), and [EntityLinking](), generated from source data under arXiv.org’s license. Access to the data is granted on request provided the user's intent is in accordance with license terms. [Detailed data schema is here](data_schema.md).
+We release the following S2abel datasets: `ExtractedTables & Papers`, `CellTypeClassification`, `AttributedSourceMatching`, and `EntityLinking` here: https://github.com/allenai/S2abEL/blob/main/data/release_data.tar.gz. [Detailed data schema is here](data_schema.md).
 
 ## Training and Evaluation
-We offer notebooks for each of the sub-tasks mentioned in the paper, namely: [cell type classification](notebooks/ctc.ipynb), [attributed source mathing & candidate generation](notebooks/asm.ipynb), [entity disambiguation](notebooks/el.ipynb), which include training and evaluating corresponding models. Please make sure to modify the data_dir in the notebooks appropriately to the directory where the training data has been downloaded.
+We offer notebooks for training and evaluating each of the sub-tasks mentioned in the paper, namely: [cell type classification](notebooks/ctc.ipynb), [attributed source mathing & candidate generation](notebooks/asm.ipynb), and [entity disambiguation](notebooks/el.ipynb).
 
 
 ## License
