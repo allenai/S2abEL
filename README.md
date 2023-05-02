@@ -1,4 +1,4 @@
-# S2abEL: A Datasetfor Entity Linking from Scientific Tables
+# S2abEL: A Dataset for Entity Linking from Scientific Tables
 
 This repository provides access to the dataset `S2abEL` and is the official implementation of [S2abEL: A Dataset and Baseline for Entity Linking from Scientific Tables with Out-of-Knowledge-Base Mentions]() by Yuze Lou, Bailey Kuehl, Erin Bransom, Aakanksha Naik, Sergey Feldman, and Doug Downey.
 
