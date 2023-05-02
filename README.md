@@ -29,3 +29,13 @@ S2abEL is released under the [Apache 2.0 license](LICENSE).
 
 ## Citation
 The dataset and method is described in the following paper:
+```
+@misc{lou2023s2abel,
+      title={S2abEL: A Dataset for Entity Linking from Scientific Tables}, 
+      author={Yuze Lou and Bailey Kuehl and Erin Bransom and Sergey Feldman and Aakanksha Naik and Doug Downey},
+      year={2023},
+      eprint={2305.00366},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
