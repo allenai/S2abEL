@@ -1,6 +1,6 @@
 # S2abEL: A Dataset for Entity Linking from Scientific Tables
 
-This repository provides access to the dataset `S2abEL` and is the official implementation of [S2abEL: A Dataset for Entity Linking from Scientific Tables].
+This repository provides access to the dataset `S2abEL` and is the official implementation of ```S2abEL: A Dataset for Entity Linking from Scientific Tables```.
 
 ## Installation
 To create a [conda](https://www.anaconda.com/distribution/) environment named `s2abel` and install requirements run:
