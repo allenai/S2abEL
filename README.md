@@ -1,6 +1,6 @@
 # S2abEL: A Dataset for Entity Linking from Scientific Tables
 
-This repository provides access to the dataset `S2abEL` and is the official implementation of [S2abEL: A Dataset for Entity Linking from Scientific Tables](https://arxiv.org/abs/2305.00366) by Yuze Lou, Bailey Kuehl, Erin Bransom, Aakanksha Naik, Sergey Feldman, and Doug Downey.
+This repository provides access to the dataset `S2abEL` and is the official implementation of [S2abEL: A Dataset for Entity Linking from Scientific Tables].
 
 ## Installation
 To create a [conda](https://www.anaconda.com/distribution/) environment named `s2abel` and install requirements run:
@@ -27,15 +27,3 @@ We offer notebooks for training and evaluating each of the sub-tasks mentioned i
 ## License
 S2abEL is released under the [Apache 2.0 license](LICENSE).
 
-## Citation
-The dataset and method is described in the following paper:
-```
-@misc{lou2023s2abel,
-      title={S2abEL: A Dataset for Entity Linking from Scientific Tables}, 
-      author={Yuze Lou and Bailey Kuehl and Erin Bransom and Sergey Feldman and Aakanksha Naik and Doug Downey},
-      year={2023},
-      eprint={2305.00366},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
-```
